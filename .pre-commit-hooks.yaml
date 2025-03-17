@@ -1,0 +1,9 @@
+---
+- id: seal-secrets
+  name: Encrypt Kubernetes secrets
+  description: encrypt secret with sealed-secrets.
+  entry: seal-secrets
+  language: python
+  stages: [pre-commit, manual]
+  minimum_pre_commit_version: 4.1.0
+  always_run: true
