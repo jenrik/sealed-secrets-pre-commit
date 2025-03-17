@@ -30,7 +30,7 @@ def sealedSecretFilename(secret_filename):
         ext = "json"
 
     return os.path.join(
-        os.path.dirname(filename),
+        os.path.dirname(secret_filename),
         f"sealed-{name}.{ext}"
     )
 
