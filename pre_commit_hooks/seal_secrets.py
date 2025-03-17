@@ -8,15 +8,20 @@ import glob
 from itertools import chain
 
 def sealSecret(filename):
+    sealed_filename = sealedSecretFilename(filename)
+    #pre_mtime = 0
+    #if os.path.exists(sealed_filename):
+    #   pre_mtime = os.path.getmtime(sealed_filename)
     r = subprocess.run([
         "kubeseal",
         "--scope=strict",
         "--secret-file",
         filename,
         "--sealed-secret-file",
-        sealedSecretFilename(filename)
+        sealed_filename
     ])
     r.check_returncode()
+    #return pre_mtime != os.path.getmtime(sealed_filename)
 
 def sealedSecretFilename(secret_filename):
     name = None
@@ -28,6 +33,9 @@ def sealedSecretFilename(secret_filename):
     elif filename.endswith(".secret.yaml"):
         name = filename.removesuffix(".secret.yaml")
         ext = "yaml"
+    elif filename.endswith(".secret.yml"):
+        name = filename.removesuffix(".secret.yml")
+        ext = "yml"
 
     return os.path.join(
         os.path.dirname(secret_filename),
@@ -51,19 +59,29 @@ def main(argv = None):
     fail = False
     for filename in args.filenames:
         with open(filename, 'r') as f:
-           docs = yaml.safe_load_all(f)
-
-           for doc in docs:
-               if "kind" in doc.keys() and doc["kind"] == "Secret":
-                   print(f"Found unecrypted secret: {filename}")
-                   fail = True
-                   break # Break docs loop
+            try:
+                for doc in yaml.safe_load_all(f):
+                    if "kind" in doc.keys() and doc["kind"] == "Secret":
+                        print(f"Found unecrypted secret: {filename}")
+                        fail = True
+                        break # Break docs loop
+            except yaml.scanner.ScannerError:
+                pass
     
     find_pattern = lambda p: glob.glob("**/" + p, recursive=True, include_hidden=True)
-    for filename in chain(find_pattern("*.secret.yaml"), find_pattern("*.secret.json")):
+    for filename in chain(find_pattern("*.secret.yaml"), find_pattern("*.secret.yml"), find_pattern("*.secret.json")):
         if checkSecret(filename):
-            print(f"Sealing secret: {filename}")
+            if filename not in args.filenames:
+                fail = True
             sealSecret(filename)
+
+    r = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], capture_output=True)
+    r.check_returncode()
+    for untracked in r.stdout.decode("utf-8").splitlines():
+        basename = os.path.basename(untracked)
+        if basename.startswith("sealed-") and (basename.endswith(".json") or basename.endswith(".yaml") or basename.endswith(".yml")):
+            print("Please stage sealed secret: " + untracked)
+            fail = True
 
     return 1 if fail else 0
 
