@@ -27,7 +27,7 @@ def sealedSecretFilename(secret_filename):
         ext = "json"
     elif filename.endswith(".secret.yaml"):
         name = filename.removesuffix(".secret.yaml")
-        ext = "json"
+        ext = "yaml"
 
     return os.path.join(
         os.path.dirname(secret_filename),
