@@ -61,11 +61,11 @@ def main(argv = None):
         with open(filename, 'r') as f:
             try:
                 for doc in yaml.safe_load_all(f):
-                    if "kind" in doc.keys() and doc["kind"] == "Secret":
+                    if isinstance(doc, dict) and "kind" in doc.keys() and doc["kind"] == "Secret":
                         print(f"Found unecrypted secret: {filename}")
                         fail = True
                         break # Break docs loop
-            except yaml.scanner.ScannerError:
+            except (yaml.scanner.ScannerError, yaml.parser.ParserError):
                 pass
     
     find_pattern = lambda p: glob.glob("**/" + p, recursive=True, include_hidden=True)
