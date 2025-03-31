@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from itertools import chain
 import argparse
+import glob
 import os
+import re
 import subprocess
 import yaml
-import glob
-from itertools import chain
 
 def sealSecret(filename):
     sealed_filename = sealedSecretFilename(filename)
@@ -57,7 +58,14 @@ def main(argv = None):
     parser.add_argument('filenames', nargs='*', help='Filenames to fix')
     args = parser.parse_args(argv)
     fail = False
+
+    insecure_pattern = re.compile(r"\.insecure\.(ya?ml|json)$")
+
     for filename in args.filenames:
+        if insecure_pattern.match(filename):
+            # File is allowed to be unencrypted
+            continue
+
         with open(filename, 'r') as f:
             try:
                 for doc in yaml.safe_load_all(f):
